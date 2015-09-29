@@ -1,0 +1,187 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>SGPD > Home</title>
+
+	<meta charset="utf-8">
+	<meta name="description" content="" />
+	
+	<link rel='shortcut icon' type='image/x-icon' href='{% static 'img/faviconS.ico'%}' />
+	<link rel='stylesheet' type='text/css' href='{% static 'bootstrap-3.1.1-dist/css/bootstrap.css' %}'>
+	<link rel='stylesheet' type='text/css' href='{% static 'style.css' %}'>
+
+	<script language='javascript' type='text/javascript' src='{% static 'jquery.js' %}' ></script>
+	<script type="text/javascript">
+
+		function gerar(){
+			$.ajax({
+				type: "GET", 
+				url: "/hash/", 
+				success: function(resposta){ 
+					var obj = eval ("(" + resposta + ")");
+					$('#hash').val(obj.hash);
+					setTimeout(function() { $('#hash').focus(); $('#hash').select();}, 0);
+				}
+			});
+		}
+
+		function cadastrar(){
+			var hash = $('#regHash').val();
+			var md5 = $('#md5Hash').val();
+			
+			if(!hash == "" && !md5 == ""){
+				$.ajax({
+					type: "GET", 
+					url: "/problemReg/", 
+					data: { "userHash": hash, "md5Hash": md5 },
+					success: function(resposta){ 
+						var obj = eval ("(" + resposta + ")");
+						if (obj.status == "OK"){
+							$('.info-table-main').fadeIn(); 
+							$('.info-table-main').delay(1500).fadeOut();
+						}
+					},
+					error: function(xmlHttpRequest, textStatus, errorThrown){
+						$('.error-table-main').fadeIn();
+						$('.error-table-main').delay(1500).fadeOut();
+					}
+				});
+			} else{
+				$('.warn-table-main').fadeIn();
+				$('.warn-table-main').delay(1500).fadeOut();
+			}
+		}
+
+		function checar(){
+			var hash = $('#hash').val();
+
+			if(!hash == ""){
+				$.ajax({
+					type: "GET", 
+					url: "/check/", 
+					data: { "userHash": hash },
+					success: function(resposta){ 
+						var row = "<table class='table table-striped' id='problemsTable'><tr><td><strong>#</strong></td><td><strong>Hash MD5</strong></td><td><strong>Status</strong></td><td><strong>Resposta</strong></td></tr>";
+						var obj = eval ("(" + resposta + ")");
+						for(var i=0; i < obj.problems.length; i++){
+							row = row + "	<tr><td>"+obj.problems[i].number+"</td><td>"+obj.problems[i].md5Hash+"</td><td>"+obj.problems[i].status+"</td><td>"+obj.problems[i].answer+"</td></tr>";
+						}
+						row = row +"<tr><td></td><td></td><td></td><td></td></tr></table>";
+						$('#hideShow').hide(); 
+						$('#tableteste').html(row);
+						$('.points').text("Pontos:"+obj.points);
+						$('#hideShow').fadeIn();
+					},
+					error: function(xmlHttpRequest, textStatus, errorThrown){
+						$('.error-table-side').fadeIn();
+						$('.error-table-side').delay(1500).fadeOut();
+					}
+				});
+			} else{
+				$('.warn-table-side').fadeIn();
+				$('.warn-table-side').delay(1500).fadeOut();
+			}
+		}
+
+		function redirecionarProcessar(){
+			var hash = $('#hash').val();
+
+			if(!hash == ""){
+				var win=window.open("/processingPage/?userHash="+hash, '_blank');
+			} else{
+				$('.warn-table-side').fadeIn();
+				$('.warn-table-side').delay(1500).fadeOut();
+			}
+		}
+
+	</script>
+</head>
+<body>
+	<!-- nav-bar -->
+	{% include 'nav-bar.html' with active='home' %}
+
+	<!-- End nav-bar -->
+	<div id="container-outer" class="container-fluid">
+		<div class="row-fluid">
+
+			<div id="container-inner">
+
+				<div id="sidebar" class='span6'>
+					<h1 class='hsize' align='center'>Gere sua Hash e comece a processar!</h1>
+					<br>
+					<form class="form-horizontal" role="form">
+					  	<div class="form-group">
+					    	<input type="text" class="form-control input-mysize" name="hash" id="hash" placeholder="Entre sua Hash">
+					  	</div>
+					</form>
+					<table class="table error-table error-table-side margin-side side-table-color" id="problemsTable">
+					 	<tr>
+							  <td align="center" class='error-text'><span class="glyphicon glyphicon-remove form-control-feedback"></span>  Infelizemente essa Hash não existe.</td>
+					 	</tr>
+					 	<tr><td></td></tr>
+					</table>
+					<table class="table warn-table warn-table-side margin-side side-table-color" id="problemsTable">
+					 	<tr>
+							  <td align="center" class='warn-text'><span class="glyphicon glyphicon-warning-sign form-control-feedback"></span> Por favor preencha o campo acima.</td>
+					 	</tr>
+					 	<tr><td></td></tr>
+					</table>
+					<button type="button" class="btn btn-success btn-mysize btn-w" onclick="gerar();">Gerar</button>
+					<button type="button" class="btn btn-info btn-mysize btn-w" onclick="checar();">Checar</button>
+					<button type="button" class="btn btn-primary btn-mysize btn-block" onclick="redirecionarProcessar()">Processar</button>
+					<div id="hideShow">
+						<h2 class='hsize points'>Pontos: </h2>
+						<div id="tableteste">
+							
+						</div>
+					</div>
+					<br><br>
+				</div>
+
+				<div id="content" class='span6'>
+					<h1 class='hsize' align='center'>Cadastre seu problema!</h1>
+					<br>
+					<form class="form-horizontal" role="form">
+					  	<div class="form-group">
+					    	<input type="text" class="form-control input-mysize spacing" name="regHash" id="regHash" placeholder="Entre sua Hash">
+					    	<input type="text" class="form-control input-mysize" name="md5Hash" id="md5Hash" placeholder="Entre seu Problema">
+					    	<table class="table info-table info-table-main margin-main main-table-color" id="problemsTable">
+							  	<tr>
+							  		<td align="center" class='info-text'><span class="glyphicon glyphicon-ok form-control-feedback"></span>  Seu problema foi cadastrado com sucesso!</td>
+							  	</tr>
+							  	<tr><td></td></tr>
+							</table>
+							<table class="table error-table error-table-main margin-main main-table-color" id="problemsTable">
+							 	<tr>
+									  <td align="center" class='error-text'><span class="glyphicon glyphicon-remove form-control-feedback"></span>  Infelizemente essa Hash não existe ou Você já cadastrou essa hash.</td>
+							 	</tr>
+							 	<tr><td></td></tr>
+							</table>
+							<table class="table warn-table warn-table-main margin-main main-table-color" id="problemsTable">
+							 	<tr>
+									  <td align="center" class='warn-text'><span class="glyphicon glyphicon-warning-sign form-control-feedback"></span> Por favor preencha os campos acima.</td>
+							 	</tr>
+							 	<tr><td></td></tr>
+							</table>
+					  	</div>
+					</form>
+					<button type="button" class="btn btn-danger btn-mysize btn-block" onclick="cadastrar();">Cadastrar</button>
+					<br><br><br><br><br><br>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- footer -->
+	{% include 'footer.html' %}
+	
+    <script type="text/javascript"> 
+    	$('#hideShow').hide(); 
+    	$('.info-table').hide(); 
+    	$('.error-table').hide(); 
+    	$('.warn-table').hide(); 
+    </script>
+</body>
+</html>

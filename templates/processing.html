@@ -1,0 +1,246 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>SGPD > Processar</title>
+
+	<meta charset="utf-8">
+	<meta name="description" content="" />
+	
+	<link rel='shortcut icon' type='image/x-icon' href='{% static 'img/faviconS.ico'%}' />
+	<link rel='stylesheet' type='text/css' href='{% static 'bootstrap-3.1.1-dist/css/bootstrap.min.css' %}'>
+	<link rel='stylesheet' type='text/css' href='{% static 'style.css' %}'>
+
+	<script language='javascript' type='text/javascript' src='{% static 'jquery.js' %}' ></script>
+	<script type="text/javascript">
+		function processar(){
+			var hash = $('#regHash').val();
+
+			if(!hash == ""){
+    			$.ajax({
+					type: "GET", 
+					url: "/checkHash/", 
+					data: { "userHash": hash },
+					success: function(resposta){ 
+						var obj = eval ("(" + resposta + ")");
+						if (obj.status == "OK"){
+							$.ajax({
+								type: "GET", 
+								url: "/check/", 
+								data: { "userHash": hash },
+								success: function(resposta){ 
+									var obj = eval ("(" + resposta + ")");
+
+									$('.points').fadeIn();
+									$('.numberPoints').text(obj.points);
+								}
+							});
+							
+							$('.btn-processar').prop("disabled",true);
+			    			$('.btn-processar').text("Processando...");
+			    			$('.btn-processar').hide();
+			    			$('.btn-parar').fadeIn()
+
+			    			$('.processingTitle').text("Processando...");
+							$("#regHash").prop('disabled', true);
+
+			    			makeOne();
+						} else{
+							$('.error-table-main').fadeIn();
+							$('.error-table-main').delay(1500).fadeOut();
+						}
+					},
+					error: function(xmlHttpRequest, textStatus, errorThrown){
+						error();
+					}
+				});
+			} else{
+				$('.warn-table-main').fadeIn();
+				$('.warn-table-main').delay(1500).fadeOut();
+			}
+		}
+
+		function makeOne(){
+			var hashUser = $('#regHash').val();
+
+		   	var csrftoken = getCookie('csrftoken');
+		   	$.ajaxSetup({
+			    crossDomain: false,
+			    beforeSend: function(xhr, settings) {
+			        if (!csrfSafeMethod(settings.type)) {
+			            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+			        }
+			    }
+			});
+
+			$.ajax({
+				type: "POST", 
+				url: "/receivePiece/", 
+				data: { "userHash": hashUser },
+				success: function(resposta){ 
+					
+					var obj = eval ("(" + resposta + ")");
+					var startString = obj.startString;
+					var stopString = obj.stopString;
+					var hash = obj.md5hash;
+					var problemId = obj.idSubProblem;
+
+					start(startString, stopString , hash, problemId);
+
+					console.log("Got a Piece!");
+				},
+				error: function(xmlHttpRequest, textStatus, errorThrown){
+					error();
+				}
+			});
+		}
+
+		function error(){
+			change();
+
+			console.log('error');
+			$('.error-table-no').fadeIn();
+			$('.error-table-no').delay(1500).fadeOut();
+
+			console.log("Stoped processing");
+			$('.points').delay(1500).fadeOut();
+			$('.btn-processar').prop("disabled",false);
+			$('.processingTitle').text("Começe a Processar!");
+			$('.btn-processar').text("Processar");
+			$("#regHash").prop('disabled', false);
+		}
+
+		function change(){
+			$('.btn-processar').text("Acabando de processar");
+			$('.processingTitle').text("Acabando de processar");
+
+			$('.btn-processar').fadeIn();
+			$('.btn-parar').hide()
+		}
+
+		function csrfSafeMethod(method) {
+		    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+		}
+
+		function getCookie(name) {
+		    var cookieValue = null;
+		    if (document.cookie && document.cookie != '') {
+		        var cookies = document.cookie.split(';');
+		        for (var i = 0; i < cookies.length; i++) {
+		            var cookie = jQuery.trim(cookies[i]);
+		            if (cookie.substring(0, name.length + 1) == (name + '=')) {
+		                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+		                break;
+		            }
+		        }
+		    }
+		    return cookieValue;
+		}
+
+		function start(startString, stopString, hash, id) {
+		    worker.postMessage({'cmd': 'start', 'startString': startString, 'stopString': stopString, 'md5hash':hash, 'problemId':id});
+		}
+
+		function stop(){
+			error();
+		}
+
+		var worker = new Worker('{% static 'processing.js' %}');
+
+		worker.addEventListener('message', function(e) {
+			var points = $('.numberPoints').text();
+			points = parseInt(points);
+
+			if(e.data.answer != false){
+				points = points + 10;
+				console.log("Found it!");
+			}
+			else{
+				points = points + 1;
+				console.log("Not This Time.");
+			}
+
+			$('.numberPoints').text(points);
+
+			$.ajax({
+				type: "POST", 
+				url: "/sendPiece/", 
+				data: { "answer": e.data.answer, "idSubProblem": e.data.problemId, "answerString": e.data.answerString},
+				success: function(resposta){ 
+					if($(".btn-parar").is(":visible"))
+						makeOne();
+					else{
+						console.log("Stoped processing");
+						$('.points').delay(1500).fadeOut();
+						$('.btn-processar').prop("disabled",false);
+						$('.processingTitle').text("Começe a Processar!");
+						$('.btn-processar').text("Processar");
+						$("#regHash").prop('disabled', false);
+					}
+				},
+				error: function(resposta){
+					error();
+				}
+			});
+		}, false);
+
+	</script>
+</head>
+<body>
+	<!-- nav-bar -->
+	{% include 'nav-bar.html' with active='processing' %}
+
+	<div id="processeingMainContent">
+
+		<h1 class='hsize processingTitle' align='center'>Começe a Processar!</h1>
+			<br>
+			<form class="form-horizontal" role="form">
+			  	<div class="form-group">
+			    	<input type="text" class="form-control input-mysize spacing" name="regHash" id="regHash" placeholder="Entre sua Hash" value="{{ userHash }}">
+					<table class="table error-table error-table-main margin-main side-table-color" id="problemsTable">
+					 	<tr>
+							  <td align="center" class='error-text'><span class="glyphicon glyphicon-remove form-control-feedback"></span>  Infelizemente essa Hash não existe.</td>
+					 	</tr>
+					 	<tr><td></td></tr>
+					</table>
+					<table class="table error-table error-table-no margin-main side-table-color" id="problemsTable">
+					 	<tr>
+							  <td align="center" class='error-text'><span class="glyphicon glyphicon-remove form-control-feedback"></span>  Infelizemente algum problem ocorreu!</td>
+					 	</tr>
+					 	<tr><td></td></tr>
+					</table>
+					<table class="table warn-table warn-table-main margin-main side-table-color" id="problemsTable">
+					 	<tr>
+							  <td align="center" class='warn-text'><span class="glyphicon glyphicon-warning-sign form-control-feedback"></span> Por favor preencha o campo acima.</td>
+					 	</tr>
+					 	<tr><td></td></tr>
+					</table>
+			    	
+			  	</div>
+			</form>
+
+			<button type="button" class="btn btn-danger btn-mysize btn-block btn-processar" onclick="processar();">Processar</button>
+			<button type="button" class="btn btn-danger btn-mysize btn-block btn-parar" onclick="change();">Parar</button>
+			<h2 class='hsize points'>Pontos: <span class='numberPoints'>0</span></h2>
+	</div>
+
+	{% include 'footer.html' %}
+    
+    <script type="text/javascript">
+    	$('.error-table').hide();
+    	$('.warn-table').hide();
+    	$('.btn-parar').hide();
+    	$('.points').hide();
+
+		processar();
+
+    	setInterval(function() {
+            if(!$(".btn-parar").is(":visible")){
+            	processar();
+        		console.log("Tried to Start!")
+        	}
+        }, 300000);
+    </script>
+</body>
+</html>
