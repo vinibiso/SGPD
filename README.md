@@ -1,9 +1,9 @@
 # SGPD
 
-** A Distributed processing system for breaking MD5 Hashes, made using Django to break the problem and Javascrit to process the pieces  **
+**A Distributed processing system for breaking MD5 Hashes, made using Django to break the problem and Javascrit to process the pieces**
 
 ## Setup:
-** Clone this repository **
+**Clone this repository**
 
 Change the DATABASES array in sgpd > settings.py
 
@@ -26,4 +26,4 @@ Change the DATABASES array in sgpd > settings.py
   python manage.py runserver  
 ```
 
-** Don't forget to make sure your mysql server is runing, you could also use SQLite **
+**Don't forget to make sure your mysql server is runing, you could also use SQLite**
